@@ -1,6 +1,10 @@
-#include <Arduino.h>
 // http://www.instructables.com/id/How-to-Interface-With-Optical-Dust-Sensor/
+
+#include <Adafruit_BME280.h>
+#include <Adafruit_Sensor.h>
+#include <Arduino.h>
 #include <MHZ19_uart.h>
+#include <Wire.h>
 
 // MHZ19 set-up
 const int rx_pin = 7; // Serial rx pin no for co2
@@ -8,7 +12,7 @@ const int tx_pin = 6; // Serial tx pin no for co2
 
 MHZ19_uart mhz19;
 
-// SHARP dust sensor set-up
+// SHARP GP2Y10 14 dust sensor set-up
 const int measurePin = A5;
 const int ledPower = 12;
 
@@ -20,9 +24,14 @@ float voMeasured = 0;
 float calcVoltage = 0;
 float dustDensity = 0;
 
+// BOSCH BME280 set-up
+#define SEALEVELPRESSURE_HPA (1013.25)
+Adafruit_BME280 bme;
+
 void setup() {
   // MH-Z19 CO2 sensor  setup
   Serial.begin(9600);
+  Serial.println("Initting MH-Z19B");
   mhz19.begin(rx_pin, tx_pin);
   mhz19.setAutoCalibration(false);
   // while( mhz19.isWarming() ) {
@@ -30,12 +39,48 @@ void setup() {
   Serial.println(mhz19.getStatus());
   delay(1000);
   //  }
+  Serial.println("Initted MH-Z19B");
+
   // Sharp dust sensor setup
+  Serial.println("Initting SHARP GP2Y10");
   pinMode(ledPower, OUTPUT);
+  Serial.println("Initting SHARP GP2Y10");
+
+  // BME 280
+  Serial.println("Initting BME 280");
+  if (!bme.begin(0x76)) {
+    Serial.println("Could not find a valid BME280 sensor, check wiring!");
+    while (1);
+  }
+  
+  Serial.println("Initted BME 280");
+
+}
+
+void printBmeValues() {
+  Serial.print("Temperature = ");
+  Serial.print(bme.readTemperature());
+  Serial.println(" *C");
+
+  Serial.print("Pressure = ");
+
+  Serial.print(bme.readPressure() / 100.0F);
+  Serial.println(" hPa");
+
+  Serial.print("Approx. Altitude = ");
+  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+  Serial.println(" m");
+
+  Serial.print("Humidity = ");
+  Serial.print(bme.readHumidity());
+  Serial.println(" %");
+
+  Serial.println();
 }
 
 void loop() {
-  //    MH-Z19 CO2 sensor  loop
+  Serial.println("------------------------------");
+  // MH-Z19 CO2 sensor  loop
   int co2ppm = mhz19.getPPM();
   int temp = mhz19.getTemperature();
 
@@ -69,5 +114,11 @@ void loop() {
 
   Serial.print("; Dust Density: ");
   Serial.println(dustDensity);
-  delay(5000);
+
+  bme.takeForcedMeasurement(); // has no effect in normal mode
+
+  printBmeValues();
+  Serial.println("------------------------------");
+
+  delay(1000);
 }
