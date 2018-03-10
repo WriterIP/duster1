@@ -13,7 +13,7 @@ const int tx_pin = 6; // Serial tx pin no for co2
 MHZ19_uart mhz19;
 
 // SHARP GP2Y10 14 dust sensor set-up
-const int measurePin = A5;
+const int measurePin = A3;
 const int ledPower = 12;
 
 const unsigned int samplingTime = 280;
@@ -44,37 +44,36 @@ void setup() {
   // Sharp dust sensor setup
   Serial.println("Initting SHARP GP2Y10");
   pinMode(ledPower, OUTPUT);
-  Serial.println("Initting SHARP GP2Y10");
+  Serial.println("Initted SHARP GP2Y10");
 
   // BME 280
   Serial.println("Initting BME 280");
-  if (!bme.begin(0x76)) {
+  bool st = bme.begin(0x76);
+  Serial.println(st);
+  if (!st) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
     while (1);
   }
-  
   Serial.println("Initted BME 280");
 
 }
 
 void printBmeValues() {
-  Serial.print("Temperature = ");
+  Serial.print("BOSCH BME280: Temperature = ");
   Serial.print(bme.readTemperature());
-  Serial.println(" *C");
+  Serial.print(" *C");
 
-  Serial.print("Pressure = ");
+  Serial.print("; Pressure = ");
 
   Serial.print(bme.readPressure() / 100.0F);
-  Serial.println(" hPa");
+  Serial.print(" hPa");
 
-  Serial.print("Approx. Altitude = ");
+  Serial.print("; Approx. Altitude = ");
   Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
-  Serial.println(" m");
+  Serial.print(" m");
 
-  Serial.print("Humidity = ");
+  Serial.print("; Humidity = ");
   Serial.print(bme.readHumidity());
-  Serial.println(" %");
-
   Serial.println();
 }
 
