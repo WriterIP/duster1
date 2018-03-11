@@ -1,1 +1,1 @@
-duster1
+Module for wearable part of air monitoring system.
