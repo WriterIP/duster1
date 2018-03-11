@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 enum Measure {
   temperature,
   co2,
@@ -15,9 +17,12 @@ struct Measurement {
 
 struct Sensor {
   const char *sensorName;
-  Measurement measurements[];
+  Measurement *measurements;
   ~Sensor() {
-    delete sensorName;
-    // delete measurements;
+    Serial.print("freeing memory " );
+    Serial.println(sensorName);
+    // delete[] sensorName;
+    // delete[] measurements;
+    // malloc/free, new/delete, new[]/delete[]
   }
 };
