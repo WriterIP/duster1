@@ -21,10 +21,6 @@ const unsigned int samplingTime = 280;
 const unsigned int deltaTime = 40;
 const unsigned int sleepTime = 9680;
 
-float voMeasured = 0;
-float calcVoltage = 0;
-float dustDens = 0;
-
 // BOSCH BME280 set-up
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme;
@@ -59,12 +55,12 @@ void setup() {
   Serial.println("Initted BME 280");
 }
 
+const char *mhz19Name = "MHZ19B";
 Sensor readMHZ19Values() {
+  Serial.println("reading from mhz19 sensor...");
   Sensor mhDTO;
-  Measurement ms[2];
-
-  mhDTO.sensorName = "MHZ19B";
-  mhDTO.measurements = ms;
+  mhDTO.sensorName = mhz19Name;
+  mhDTO.measurements = new Measurement[2];
 
   mhDTO.measurements[0].measure = co2;
   mhDTO.measurements[0].value = mhz19.getPPM();
@@ -75,12 +71,15 @@ Sensor readMHZ19Values() {
   return mhDTO;
 }
 
+const char *bmeName = "BME";
 Sensor readBmeValues() {
-  Sensor bmeDTO;
-  Measurement ms[4];
+  Serial.println("reading from bme sensor...");
 
-  bmeDTO.sensorName = "BME";
-  bmeDTO.measurements = ms;
+  bme.takeForcedMeasurement(); // has no effect in normal mode
+
+  Sensor bmeDTO;
+  bmeDTO.sensorName = bmeName;
+  bmeDTO.measurements = new Measurement[4];
 
   bmeDTO.measurements[0].measure = temperature;
   bmeDTO.measurements[0].value = bme.readTemperature();
@@ -97,14 +96,43 @@ Sensor readBmeValues() {
   return bmeDTO;
 }
 
-Sensor readDustValues(){
+const char *dsharpName = "GP2Y10";
+Sensor readDustValues() {
+  Serial.println("reading from dust sensor...");
+
+  float voMeasured = 0;
+  float calcVoltage = 0;
+  float dustDens = 0;
+
+  digitalWrite(ledPower, LOW);
+  delayMicroseconds(samplingTime);
+
+  voMeasured = analogRead(measurePin);
+  delayMicroseconds(deltaTime);
+  digitalWrite(ledPower, HIGH);
+  delayMicroseconds(sleepTime);
+
+  calcVoltage = voMeasured * (5.0 / 1024);
+  dustDens = 0.17 * calcVoltage - 0.1;
+
   Sensor sharpDTO;
+  sharpDTO.sensorName = dsharpName;
+  sharpDTO.measurements = new Measurement[2];
+  if (dustDens < 0) {
+    dustDens = 0.00;
+  }
+
+  sharpDTO.measurements[0].measure = dustRaw;
+  sharpDTO.measurements[0].value = voMeasured;
+
+  sharpDTO.measurements[1].measure = dustDensity;
+  sharpDTO.measurements[1].value = dustDens;
 
   return sharpDTO;
 }
 
-//todo: refactor it to printsensorvalues
-void printBmeValues(Sensor bmeDTO){
+// todo: refactor it to printsensorvalues
+void printBmeValues(Sensor bmeDTO) {
   Serial.print("BOSCH BME280: Temperature = ");
   Serial.print(bmeDTO.measurements[0].value);
   Serial.print(" *C");
@@ -123,16 +151,25 @@ void printBmeValues(Sensor bmeDTO){
   Serial.println();
 }
 
-void printMHZ19Values(Sensor mhDTO){
+void printMHZ19Values(Sensor mhDTO) {
   Serial.print("MHZ19: co2: ");
   Serial.print(mhDTO.measurements[0].value);
   Serial.print("; tempMH: ");
   Serial.println(mhDTO.measurements[1].value);
 }
 
-//debug
-int i = 0;
+void printGP2Y10Values(Sensor sharpDTO) {
+  Serial.print("SHARP GP2Y10: Raw Signal Value (0-1023): ");
+  Serial.print(sharpDTO.measurements[0].value);
 
+  // Serial.println("Voltage:");
+  // Serial.println(calcVoltage);
+
+  Serial.print("; Dust Density: ");
+  Serial.println(sharpDTO.measurements[1].value);
+}
+
+// debug
 extern unsigned int __bss_end;
 extern unsigned int __heap_start;
 extern void *__brkval;
@@ -146,45 +183,30 @@ uint16_t getFreeSram() {
   else
     return (((uint16_t)&newVariable) - ((uint16_t)__brkval));
 };
-//end debug section
+// end debug section
+
 void loop() {
-  Serial.println(i++);
+  Serial.print("Time: ");
+  Serial.println(millis());
+  Serial.print("Free SRAM: ");
+  Serial.println(getFreeSram());
+
   Serial.println("------------------------------");
   // MH-Z19 CO2 sensor  loop
-  Sensor m =  readMHZ19Values();
+  Sensor m = readMHZ19Values();
   printMHZ19Values(m);
+  delete[] m.measurements;
 
   // dust measuring
-  digitalWrite(ledPower, LOW);
-  delayMicroseconds(samplingTime);
-
-  voMeasured = analogRead(measurePin);
-
-  delayMicroseconds(deltaTime);
-  digitalWrite(ledPower, HIGH);
-  delayMicroseconds(sleepTime);
-
-  calcVoltage = voMeasured * (5.0 / 1024);
-  dustDens = 0.17 * calcVoltage - 0.1;
-
-  if (dustDens < 0) {
-    dustDens = 0.00;
-  }
-
-  Serial.print("SHARP GP2Y10: Raw Signal Value (0-1023): ");
-  Serial.print(voMeasured);
-
-  // Serial.println("Voltage:");
-  // Serial.println(calcVoltage);
-
-  Serial.print("; Dust Density: ");
-  Serial.println(dustDens);
-
-  // bme.takeForcedMeasurement(); // has no effect in normal mode
-
-  Sensor b =  readBmeValues();
+  Sensor d = readDustValues();
+  printGP2Y10Values(d);
+  delete[] d.measurements;//somewhy can't move it to struct's destructor
+  // bme measuring
+  Sensor b = readBmeValues();
   printBmeValues(b);
+  delete[] b.measurements;
+
   Serial.println("------------------------------");
-  Serial.println(getFreeSram());
+
   delay(2000);
 }

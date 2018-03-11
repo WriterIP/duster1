@@ -12,17 +12,23 @@ enum Measure {
 
 struct Measurement {
   Measure measure;
-  double value;
+  float value;
 };
 
 struct Sensor {
   const char *sensorName;
   Measurement *measurements;
-  ~Sensor() {
-    Serial.print("freeing memory " );
-    Serial.println(sensorName);
-    // delete[] sensorName;
-    // delete[] measurements;
-    // malloc/free, new/delete, new[]/delete[]
-  }
+  // Sensor(){}
+  // ~Sensor() {
+  //   // Serial.print("freeing memory " );
+  //   // Serial.println(sensorName);
+  //   // delete sensorName;
+  // if(measurements)
+  //   delete[] measurements;
+  // //   //
+  //   // Serial.print("freed memory " );
+  //   // Serial.println(sensorName);
+  //
+  //   // malloc/free, new/delete, new[]/delete[]
+  // }
 };
