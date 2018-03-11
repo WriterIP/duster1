@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <MHZ19_uart.h>
 #include <Wire.h>
+#include "model.h"
 
 // MHZ19 set-up
 const int rx_pin = 7; // Serial rx pin no for co2
@@ -22,7 +23,7 @@ const unsigned int sleepTime = 9680;
 
 float voMeasured = 0;
 float calcVoltage = 0;
-float dustDensity = 0;
+float dustDens = 0;
 
 // BOSCH BME280 set-up
 #define SEALEVELPRESSURE_HPA (1013.25)
@@ -99,10 +100,10 @@ void loop() {
   delayMicroseconds(sleepTime);
 
   calcVoltage = voMeasured * (5.0 / 1024);
-  dustDensity = 0.17 * calcVoltage - 0.1;
+  dustDens = 0.17 * calcVoltage - 0.1;
 
-  if (dustDensity < 0) {
-    dustDensity = 0.00;
+  if (dustDens < 0) {
+    dustDens = 0.00;
   }
 
   Serial.print("SHARP GP2Y10: Raw Signal Value (0-1023): ");
