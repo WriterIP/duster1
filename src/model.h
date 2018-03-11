@@ -1,4 +1,4 @@
-enum measure {
+enum Measure {
   temperature,
   co2,
   dustRaw,
@@ -8,7 +8,16 @@ enum measure {
   humidity
 };
 
-struct sensor{
-  char* sensorName;
-  measure* measures;
+struct Measurement {
+  Measure measure;
+  double value;
+};
+
+struct Sensor {
+  const char *sensorName;
+  Measurement measurements[];
+  ~Sensor() {
+    delete sensorName;
+    // delete measurements;
+  }
 };

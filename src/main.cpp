@@ -59,7 +59,13 @@ void setup() {
 
 }
 
-void printBmeValues() {
+Sensor printBmeValues() {
+  Sensor bmeDTO;
+
+  bmeDTO.sensorName = "BOSCH_BME280";
+  bmeDTO.measurements={}//= Measurement[3];
+  bmeDTO.measurements[1].measure = Measure.temperature;
+
   Serial.print("BOSCH BME280: Temperature = ");
   Serial.print(bme.readTemperature());
   Serial.print(" *C");
@@ -76,6 +82,8 @@ void printBmeValues() {
   Serial.print("; Humidity = ");
   Serial.print(bme.readHumidity());
   Serial.println();
+
+  return bmeDTO;
 }
 
 void loop() {
