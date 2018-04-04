@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include <MHZ19_uart.h>
 #include <Wire.h>
+#include <SoftwareSerial.h>
 
 // MHZ19 set-up
 const int rx_pin = 7; // Serial rx pin no for co2
@@ -25,9 +26,14 @@ const unsigned int sleepTime = 9680;
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme;
 
+//BT
+SoftwareSerial BT(3, 4);
+
 void setup() {
   // MH-Z19 CO2 sensor  setup
   Serial.begin(9600);
+  BT.begin(9600);
+
   Serial.println("Initting MH-Z19B");
   mhz19.begin(rx_pin, tx_pin);
   mhz19.setAutoCalibration(false);
@@ -49,8 +55,7 @@ void setup() {
   Serial.println(st);
   if (!st) {
     Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    while (1)
-      ;
+    while (1);//todo:wait 10 seconds
   }
   Serial.println("Initted BME 280");
 }
@@ -185,6 +190,15 @@ uint16_t getFreeSram() {
 };
 // end debug section
 
+void printBT(const char *message) {
+      BT.print(BT.available());
+    // if (BT.available()){
+      BT.println(message);
+    // } else{
+    //   Serial.println("BT unavailable");
+    // }
+}
+
 void loop() {
   Serial.print("Time: ");
   Serial.println(millis());
@@ -208,5 +222,6 @@ void loop() {
 
   Serial.println("------------------------------");
 
+  printBT("made measure");
   delay(2000);
 }
