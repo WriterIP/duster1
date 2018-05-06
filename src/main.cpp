@@ -5,8 +5,8 @@
 #include <Adafruit_Sensor.h>
 #include <Arduino.h>
 #include <MHZ19_uart.h>
-#include <Wire.h>
 #include <SoftwareSerial.h>
+#include <Wire.h>
 
 // MHZ19 set-up
 const int rx_pin = 7; // Serial rx pin no for co2
@@ -26,12 +26,13 @@ const unsigned int sleepTime = 9680;
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme;
 
-//BT
+// BT
 SoftwareSerial BT(3, 4);
 
 void setup() {
-  // MH-Z19 CO2 sensor  setup
   Serial.begin(9600);
+
+  Serial.println("Initting BT");
   BT.begin(9600);
 
   Serial.println("Initting MH-Z19B");
@@ -53,11 +54,17 @@ void setup() {
   Serial.println("Initting BME 280");
   bool st = bme.begin(0x76);
   Serial.println(st);
-  if (!st) {
-    Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    while (1);//todo:wait 10 seconds
+  int jj = 0;
+  while (jj < 10) {
+    if (!st) {
+      Serial.println("Could not find a valid BME280 sensor, check wiring!");
+      jj++;
+      delay(500);
+    } else {
+      Serial.println("Initted BME 280");
+      break;
+    }
   }
-  Serial.println("Initted BME 280");
 }
 
 const char *mhz19Name = "MHZ19B";
@@ -191,12 +198,12 @@ uint16_t getFreeSram() {
 // end debug section
 
 void printBT(const char *message) {
-      BT.print(BT.available());
-    // if (BT.available()){
-      BT.println(message);
-    // } else{
-    //   Serial.println("BT unavailable");
-    // }
+  Serial.println(BT.available());
+  // if (BT.available()){
+  BT.println(message);
+  // } else{
+  //   Serial.println("BT unavailable");
+  // }
 }
 
 void loop() {
@@ -214,7 +221,7 @@ void loop() {
   // dust measuring
   Sensor d = readDustValues();
   printGP2Y10Values(d);
-  delete[] d.measurements;//somewhy can't move it to struct's destructor
+  delete[] d.measurements; // somewhy can't move it to struct's destructor
   // bme measuring
   Sensor b = readBmeValues();
   printBmeValues(b);
