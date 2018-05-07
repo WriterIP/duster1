@@ -14,14 +14,6 @@ const int tx_pin = 6; // Serial tx pin no for co2
 
 MHZ19_uart mhz19;
 
-// SHARP GP2Y10 14 dust sensor set-up
-const int measurePin = A3;
-const int ledPower = 12;
-
-const unsigned int samplingTime = 280;
-const unsigned int deltaTime = 40;
-const unsigned int sleepTime = 9680;
-
 // BOSCH BME280 set-up
 #define SEALEVELPRESSURE_HPA (1013.25)
 Adafruit_BME280 bme;
@@ -29,11 +21,36 @@ Adafruit_BME280 bme;
 // BT
 SoftwareSerial BT(3, 4);
 
+void sendCommand(const char *command) {
+  Serial.print("Command send :");
+  Serial.println(command);
+  BT.println(command);
+  // wait some time
+  delay(100);
+
+  char reply[100];
+  int i = 0;
+  while (BT.available()) {
+    reply[i] = BT.read();
+    i += 1;
+  }
+  // end the string
+  reply[i] = '\0';
+  Serial.print(reply);
+  Serial.println("Reply end");
+  delay(50);
+}
+
 void setup() {
   Serial.begin(9600);
 
   Serial.println("Initting BT");
   BT.begin(9600);
+  sendCommand("AT");
+  sendCommand("AT+ROLE0");
+  sendCommand("AT+UUID0xFFE0");
+  sendCommand("AT+CHAR0xFFE1");
+  sendCommand("AT+NAMEAirmonitor");
 
   Serial.println("Initting MH-Z19B");
   mhz19.begin(rx_pin, tx_pin);
@@ -44,11 +61,6 @@ void setup() {
   delay(1000);
   //  }
   Serial.println("Initted MH-Z19B");
-
-  // Sharp dust sensor setup
-  Serial.println("Initting SHARP GP2Y10");
-  pinMode(ledPower, OUTPUT);
-  Serial.println("Initted SHARP GP2Y10");
 
   // BME 280
   Serial.println("Initting BME 280");
@@ -108,41 +120,6 @@ Sensor readBmeValues() {
   return bmeDTO;
 }
 
-const char *dsharpName = "GP2Y10";
-Sensor readDustValues() {
-  Serial.println("reading from dust sensor...");
-
-  float voMeasured = 0;
-  float calcVoltage = 0;
-  float dustDens = 0;
-
-  digitalWrite(ledPower, LOW);
-  delayMicroseconds(samplingTime);
-
-  voMeasured = analogRead(measurePin);
-  delayMicroseconds(deltaTime);
-  digitalWrite(ledPower, HIGH);
-  delayMicroseconds(sleepTime);
-
-  calcVoltage = voMeasured * (5.0 / 1024);
-  dustDens = 0.17 * calcVoltage - 0.1;
-
-  Sensor sharpDTO;
-  sharpDTO.sensorName = dsharpName;
-  sharpDTO.measurements = new Measurement[2];
-  if (dustDens < 0) {
-    dustDens = 0.00;
-  }
-
-  sharpDTO.measurements[0].measure = dustRaw;
-  sharpDTO.measurements[0].value = voMeasured;
-
-  sharpDTO.measurements[1].measure = dustDensity;
-  sharpDTO.measurements[1].value = dustDens;
-
-  return sharpDTO;
-}
-
 // todo: refactor it to printsensorvalues
 void printBmeValues(Sensor bmeDTO) {
   Serial.print("BOSCH BME280: Temperature = ");
@@ -170,15 +147,22 @@ void printMHZ19Values(Sensor mhDTO) {
   Serial.println(mhDTO.measurements[1].value);
 }
 
-void printGP2Y10Values(Sensor sharpDTO) {
-  Serial.print("SHARP GP2Y10: Raw Signal Value (0-1023): ");
-  Serial.print(sharpDTO.measurements[0].value);
+void printDataBt(Sensor mhDTO, Sensor bmeDTO) {
+  String buf;
+  buf += String(mhDTO.measurements[0].value, 0);
+  buf += F(",");
+  buf += String(bmeDTO.measurements[0].value, 1);
+  buf += F(",");
+  buf += String(bmeDTO.measurements[1].value, 0);
+  buf += F(",");
+  buf += String(bmeDTO.measurements[3].value, 2);
+  char * cstr = new char [buf.length()+1];
+  strcpy(cstr, buf.c_str());
+  Serial.print(buf.length()+1);
+  Serial.println(cstr);
+  BT.write(cstr);
+  delete[] cstr;
 
-  // Serial.println("Voltage:");
-  // Serial.println(calcVoltage);
-
-  Serial.print("; Dust Density: ");
-  Serial.println(sharpDTO.measurements[1].value);
 }
 
 // debug
@@ -197,15 +181,6 @@ uint16_t getFreeSram() {
 };
 // end debug section
 
-void printBT(const char *message) {
-  Serial.println(BT.available());
-  // if (BT.available()){
-  BT.println(message);
-  // } else{
-  //   Serial.println("BT unavailable");
-  // }
-}
-
 void loop() {
   Serial.print("Time: ");
   Serial.println(millis());
@@ -216,19 +191,17 @@ void loop() {
   // MH-Z19 CO2 sensor  loop
   Sensor m = readMHZ19Values();
   printMHZ19Values(m);
-  delete[] m.measurements;
 
-  // dust measuring
-  Sensor d = readDustValues();
-  printGP2Y10Values(d);
-  delete[] d.measurements; // somewhy can't move it to struct's destructor
   // bme measuring
   Sensor b = readBmeValues();
   printBmeValues(b);
+
+  printDataBt(m, b);
+
+  delete[] m.measurements;
   delete[] b.measurements;
 
   Serial.println("------------------------------");
 
-  printBT("made measure");
   delay(2000);
 }
